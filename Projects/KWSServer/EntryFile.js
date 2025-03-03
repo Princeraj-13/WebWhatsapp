@@ -48,7 +48,7 @@ let WsOnConnection = (ws, req) => {
 
     ws.on('message', (data, isBinary) => {
         CommonChatLog.push({ id: localWebSocketData.id, data, InOut: "In" });
-
+        // console.log("Prince Raj", data, isBinary);
         CommonOnMessage({
             inData: data,
             inws: ws,

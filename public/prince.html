@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bulk Message Sender</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.11.0/toastify.min.css">
+    <style>
+        /* Custom styles for the message input */
+        .message-input {
+            background: linear-gradient(145deg, #f3f4f6, #e5e7eb);
+            border: none;
+            border-radius: 15px;
+            box-shadow: inset 5px 5px 10px #d1d5db, inset -5px -5px 10px #ffffff;
+            padding: 1.5rem;
+            font-size: 1.1rem;
+            color: #374151;
+            transition: all 0.3s ease;
+        }
+
+        .message-input:focus {
+            outline: none;
+            box-shadow: inset 7px 7px 14px #d1d5db, inset -7px -7px 14px #ffffff;
+        }
+
+        /* Drag-and-drop area */
+        .drag-drop-area {
+            border: 2px dashed #3b82f6;
+            border-radius: 15px;
+            background: rgba(59, 130, 246, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .drag-drop-area.dragging {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        /* Send button */
+        .send-button {
+            background: linear-gradient(145deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            padding: 1rem 2rem;
+            box-shadow: 5px 5px 10px #d1d5db, -5px -5px 10px #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 7px 7px 14px #d1d5db, -7px -7px 14px #ffffff;
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+            box-shadow: 3px 3px 6px #d1d5db, -3px -3px 6px #ffffff;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto p-6">
+        <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
+            <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">WhatsApp Bulk Message Sender</h1>
+
+            <!-- Drag-and-Drop CSV Upload Section -->
+            <div class="mb-8">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Upload CSV File</label>
+                <div id="dragDropArea" class="drag-drop-area p-8 text-center cursor-pointer">
+                    <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    <p class="mt-4 text-gray-600">Drag & drop a CSV file here or <span
+                            class="text-blue-500 font-semibold">click to upload</span></p>
+                    <input type="file" id="csvFile" accept=".csv" class="hidden">
+                </div>
+                <p class="mt-2 text-sm text-gray-500">CSV file should contain a list of WhatsApp numbers.</p>
+            </div>
+
+            <!-- Futuristic Message Input Section -->
+            <div class="mb-8">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Your Message</label>
+                <div class="relative">
+                    <textarea id="message" rows="4" class="message-input w-full"
+                        placeholder="Type your message here..."></textarea>
+                    <div class="absolute bottom-3 right-3 flex items-center space-x-2">
+                        <button class="p-2 bg-blue-100 rounded-full hover:bg-blue-200 transition duration-300">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                        </button>
+                        <button class="p-2 bg-blue-100 rounded-full hover:bg-blue-200 transition duration-300">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Send Button -->
+            <button id="sendMessageBtn" class="send-button w-full">
+                Send Messages
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.11.0/toastify.min.js"></script>
+    <script>
+        let webSocket;
+
+        // Drag-and-Drop Functionality
+        const dragDropArea = document.getElementById('dragDropArea');
+        const csvFileInput = document.getElementById('csvFile');
+
+        dragDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.add('dragging');
+        });
+
+        dragDropArea.addEventListener('dragleave', () => {
+            dragDropArea.classList.remove('dragging');
+        });
+
+        dragDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.remove('dragging');
+            csvFileInput.files = e.dataTransfer.files;
+            Toastify({
+                text: "File uploaded successfully!",
+                duration: 3000,
+                gravity: "top",
+                position: "center",
+                backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+            }).showToast();
+        });
+
+        dragDropArea.addEventListener('click', () => {
+            csvFileInput.click();
+        });
+
+        csvFileInput.addEventListener('change', () => {
+            if (csvFileInput.files.length > 0) {
+                Toastify({
+                    text: "File uploaded successfully!",
+                    duration: 2000,
+                    gravity: "top",
+                    position: "center",
+                    backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+                }).showToast();
+            }
+        });
+    </script>
+    <script type="module" src="./prince/Js/WebSocket/EntryFile.js"></script>
+</body>
+
+</html>
